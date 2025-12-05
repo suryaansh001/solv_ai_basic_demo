@@ -564,7 +564,7 @@
                     if (sampleBtn) sampleBtn.disabled = false;
                     
                     // Fetch model info and generate form
-                    const apiUrl = 'http://localhost:5000/api/model_info/' + modelType;
+                    const apiUrl = '/api/model_info/' + modelType;
                     console.log('📡 Fetching from:', apiUrl);
                     fetch(apiUrl)
                         .then(response => {
@@ -781,7 +781,7 @@
             }
             
             try {
-                const response = await fetch('http://localhost:5000/api/predict', {
+                const response = await fetch('/api/predict', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ model_type: selectedModel, input_data: data })
