@@ -31,9 +31,10 @@ def add_cache_headers(response):
 # CONFIGURATION
 # ============================================================================
 
-# Paths to models
-SYNTHETIC_AI_MODEL_DIR = '/home/sury/proj/solviser/solviser/solve/pythonTry1/'
-LENDING_CLUB_MODEL_DIR = '/home/sury/proj/solviser/solviser/solve/pythontry2/final_mdels/'
+# Paths to models (relative to app.py location)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SYNTHETIC_AI_MODEL_DIR = os.path.join(BASE_DIR, 'models', 'synthetic_ai')
+LENDING_CLUB_MODEL_DIR = os.path.join(BASE_DIR, 'models', 'lending_club')
 
 # Global model storage
 models = {
@@ -456,7 +457,10 @@ if __name__ == '__main__':
     load_lending_club_models()
     
     print("\n🌐 Starting server...")
-    print("   URL: http://localhost:5000")
+    port = int(os.environ.get('PORT', 5000))
+    debug_mode = os.environ.get('FLASK_ENV', 'development') == 'development'
+    print(f"   URL: http://localhost:{port}")
+    print(f"   Debug Mode: {debug_mode}")
     print("="*60 + "\n")
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=debug_mode, host='0.0.0.0', port=port)
