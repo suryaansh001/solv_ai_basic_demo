@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 AI Risk Prediction System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            --danger-gradient: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            --warning-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .main-container {
+            padding: 30px 0;
+        }
+
+        .header-card {
+            background: var(--primary-gradient);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+        }
+
+        .header-card h1 {
+            color: white;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .header-card p {
+            color: rgba(255,255,255,0.8);
+            margin-bottom: 0;
+        }
+
+        .model-selector {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .model-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            height: 100%;
+        }
+
+        .model-card:hover {
+            background: rgba(255,255,255,0.1);
+            transform: translateY(-5px);
+        }
+
+        .model-card.selected {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .model-card h5 {
+            color: white;
+            margin-bottom: 10px;
+        }
+
+        .model-card p {
+            color: rgba(255,255,255,0.7);
+            font-size: 0.9rem;
+            margin-bottom: 0;
+        }
+
+        .model-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        .input-section {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            margin-top: 20px;
+            border: 1px solid rgba(255,255,255,0.2);
+            min-height: 200px;
+        }
+
+        .input-section h4 {
+            color: white;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .form-label {
+            color: rgba(255,255,255,0.9);
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .form-control {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            border-radius: 8px;
+        }
+
+        .form-control:focus {
+            background: rgba(255,255,255,0.15);
+            border-color: #667eea;
+            color: white;
+            box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25);
+        }
+
+        .form-control::placeholder {
+            color: rgba(255,255,255,0.5);
+        }
+
+        .form-select {
+            background: rgba(255,255,255,0.1) url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23b0b8ff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e") no-repeat right 0.75rem center/16px 16px;
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            border-radius: 8px;
+            padding-right: 2.5rem;
+        }
+
+        .form-select:focus {
+            background-color: rgba(255,255,255,0.15);
+            border-color: #667eea;
+            color: white;
+            box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25);
+        }
+
+        .form-select option {
+            background: #1a1a2e;
+            color: white;
+        }
+
+        .form-select option:hover {
+            background: #667eea;
+        }
+
+        .form-text {
+            color: rgba(255,255,255,0.5);
+            font-size: 0.75rem;
+        }
+
+        .btn-predict {
+            background: var(--primary-gradient);
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 10px;
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .btn-predict:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+            color: white;
+        }
+
+        .btn-predict:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .results-section {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255,255,255,0.2);
+            display: none;
+        }
+
+        .results-section.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .results-section h4 {
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .result-card {
+            background: rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+
+        .result-label {
+            color: #b0b8ff;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .result-value {
+            color: #ffffff;
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .result-value.small {
+            font-size: 1.2rem;
+        }
+
+        #results-content {
+            color: #ffffff;
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+
+        #results-content pre {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            padding: 20px;
+            color: #b0ffc9;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            overflow-x: auto;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .risk-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .risk-badge.low {
+            background: rgba(56, 239, 125, 0.2);
+            color: #38ef7d;
+        }
+
+        .risk-badge.high {
+            background: rgba(235, 51, 73, 0.2);
+            color: #eb3349;
+        }
+
+        .recommendation-box {
+            background: rgba(102, 126, 234, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .recommendation-box h5 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .recommendation-box p {
+            color: white;
+            margin-bottom: 0;
+            font-size: 1.1rem;
+        }
+
+        .sample-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .sample-modal-overlay.show {
+            display: flex;
+        }
+
+        .sample-modal {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 2px solid #667eea;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+        }
+
+        .sample-modal h5 {
+            color: white;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        .sample-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .sample-option {
+            background: rgba(255,255,255,0.08);
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+            text-align: center;
+        }
+
+        .sample-option:hover {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+            transform: translateX(5px);
+        }
+
+        .sample-option.selected {
+            background: rgba(102, 126, 234, 0.3);
+            border-color: #667eea;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .sample-modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .btn-modal {
+            padding: 10px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-modal.cancel {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .btn-modal.cancel:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .btn-modal.confirm {
+            background: var(--primary-gradient);
+            color: white;
+        }
+
+        .btn-modal.confirm:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-modal.confirm:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container main-container">
+        <!-- Header -->
+        <div class="header-card text-center">
+            <h1><i class="fas fa-brain"></i> AI Risk Prediction System</h1>
+            <p>Advanced machine learning models for comprehensive risk assessment</p>
+        </div>
+
+        <!-- Model Selector -->
+        <div class="model-selector">
+            <h4 class="text-white mb-4"><i class="fas fa-cube"></i> Select Prediction Model</h4>
+            <div class="row">
+                <div class="col-md-6 mb-3 mb-md-0">
+                    <div class="model-card" id="synthetic-ai-card" onclick="selectModel('synthetic_ai')">
+                        <div class="text-center">
+                            <i class="fas fa-building model-icon"></i>
+                            <h5>Synthetic AI Dataset</h5>
+                            <p>Payment delay prediction for companies based on historical transaction patterns</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="model-card" id="lending-club-card" onclick="selectModel('lending_club')">
+                        <div class="text-center">
+                            <i class="fas fa-credit-card model-icon"></i>
+                            <h5>LendingClub Dataset</h5>
+                            <p>Comprehensive loan risk assessment including default, delay, and fraud prediction</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Form Section -->
+        <div class="input-section" id="input-section" style="display: none;">
+            <h4><i class="fas fa-edit"></i> <span id="form-title">Enter Details</span></h4>
+            <form id="prediction-form">
+                <div id="form-fields" class="row">
+                    <!-- Dynamic fields will be inserted here -->
+                </div>
+                <div class="text-center mt-4">
+                    <button type="button" class="btn btn-outline-light me-3" id="sample-btn" onclick="fillSampleValues()" disabled>
+                        <i class="fas fa-flask me-2"></i> Fill Sample Values
+                    </button>
+                    <button type="submit" class="btn btn-predict" id="predict-btn">
+                        <i class="fas fa-magic me-2"></i> Get Prediction
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Results Section -->
+        <div class="results-section" id="results-section">
+            <h4><i class="fas fa-chart-line"></i> Prediction Results</h4>
+            <div id="results-content">
+                <!-- Results will be inserted here -->
+            </div>
+        </div>
+
+        <!-- Sample Selector Modal -->
+        <div class="sample-modal-overlay" id="sample-modal-overlay">
+            <div class="sample-modal">
+                <h5><i class="fas fa-flask"></i> Select Sample Data Profile</h5>
+                <div class="sample-grid" id="sample-grid">
+                    <!-- Sample options will be inserted here -->
+                </div>
+                <div class="sample-modal-buttons">
+                    <button class="btn-modal cancel" onclick="closeSampleModal()">Cancel</button>
+                    <button class="btn-modal confirm" id="confirm-sample-btn" onclick="applySampleData()" disabled>Apply Sample</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let selectedModel = null;
+        let modelInfo = null;
+
+        // Initialize when DOM is ready
+        function initializeApp() {
+            console.log('🚀 App initializing...');
+            const syntheticCard = document.getElementById('synthetic-ai-card');
+            const lendingCard = document.getElementById('lending-club-card');
+            console.log('DOM Check:', { syntheticCard: !!syntheticCard, lendingCard: !!lendingCard });
+        }
+
+        // Wait for DOM to be fully loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeApp);
+        } else {
+            initializeApp();
+        }
+
+        // Sample data
+        const sampleData = {
+            synthetic_ai: [
+                { name: "Low Risk", avg_delay_days: 2.5, max_delay_days: 15, std_delay_days: 3.2, on_time_rate: 0.95, total_value: 250000, avg_credit_days: 45, delayed_count: 1, total_txn: 50, CreditDays: 60, Amount: 15000, OutstandingAmount: 0 },
+                { name: "Medium Risk", avg_delay_days: 8.5, max_delay_days: 30, std_delay_days: 6.8, on_time_rate: 0.85, total_value: 180000, avg_credit_days: 35, delayed_count: 5, total_txn: 40, CreditDays: 45, Amount: 12000, OutstandingAmount: 2000 },
+                { name: "High Risk", avg_delay_days: 18.5, max_delay_days: 60, std_delay_days: 12.5, on_time_rate: 0.65, total_value: 95000, avg_credit_days: 25, delayed_count: 12, total_txn: 35, CreditDays: 30, Amount: 8000, OutstandingAmount: 5000 }
+            ],
+            lending_club: [
+                { name: "Prime", loan_amnt: 10000, dti: 0.22, emp_length_years: 5, state_encoded: 5, int_rate: 10.5, installment: 323.45, annual_inc: 85000, delinq_2yrs: 0, inq_last_6mths: 0, open_acc: 6, pub_rec: 0, revol_bal: 5000, total_acc: 12, Credit_Utilization: 25, Default_Rate_By_State: 10, Dispute_Count: 0, collections_12_mths_ex_med: 0, pub_rec_bankruptcies: 0, term: 36, grade: 2, acc_now_delinq: 0 },
+                { name: "Good", loan_amnt: 15000, dti: 0.28, emp_length_years: 8, state_encoded: 10, int_rate: 12.5, installment: 501.53, annual_inc: 65000, delinq_2yrs: 0, inq_last_6mths: 1, open_acc: 8, pub_rec: 0, revol_bal: 12000, total_acc: 15, Credit_Utilization: 45, Default_Rate_By_State: 15, Dispute_Count: 0, collections_12_mths_ex_med: 0, pub_rec_bankruptcies: 0, term: 36, grade: 3, acc_now_delinq: 0 },
+                { name: "Poor", loan_amnt: 25000, dti: 0.52, emp_length_years: 1, state_encoded: 20, int_rate: 18.5, installment: 638.15, annual_inc: 35000, delinq_2yrs: 2, inq_last_6mths: 5, open_acc: 15, pub_rec: 2, revol_bal: 9500, total_acc: 25, Credit_Utilization: 95, Default_Rate_By_State: 25, Dispute_Count: 1, collections_12_mths_ex_med: 1, pub_rec_bankruptcies: 0, term: 60, grade: 5, acc_now_delinq: 1 }
+            ]
+        };
+
+        function selectModel(modelType) {
+            console.log('✅ selectModel called with:', modelType);
+            selectedModel = modelType;
+            
+            // Use a small delay to ensure DOM is ready
+            setTimeout(() => {
+                try {
+                    // Update UI - add safer checks
+                    const syntheticCard = document.getElementById('synthetic-ai-card');
+                    const lendingCard = document.getElementById('lending-club-card');
+                    
+                    if (!syntheticCard || !lendingCard) {
+                        console.error('❌ Card elements not found!');
+                        console.error('Available elements:', {
+                            syntheticCard: !!syntheticCard,
+                            lendingCard: !!lendingCard
+                        });
+                        return;
+                    }
+                    
+                    syntheticCard.classList.remove('selected');
+                    lendingCard.classList.remove('selected');
+                    
+                    // Correct mapping for model type to card ID
+                    const cardId = modelType === 'synthetic_ai' ? 'synthetic-ai-card' : 'lending-club-card';
+                    const selectedCard = document.getElementById(cardId);
+                    
+                    if (!selectedCard) {
+                        console.error('❌ Selected card not found:', cardId);
+                        return;
+                    }
+                    
+                    selectedCard.classList.add('selected');
+                    console.log('✅ Card selected:', modelType);
+                    
+                    // Show input section
+                    const inputSection = document.getElementById('input-section');
+                    if (!inputSection) {
+                        console.error('❌ Input section not found!');
+                        return;
+                    }
+                    inputSection.style.display = 'block';
+                    console.log('✅ Input section displayed');
+                    
+                    // Update form title
+                    const titles = {
+                        'synthetic_ai': 'Synthetic AI Dataset - Payment Delay Prediction',
+                        'lending_club': 'LendingClub Dataset - Loan Risk Assessment'
+                    };
+                    const formTitle = document.getElementById('form-title');
+                    if (formTitle) formTitle.textContent = titles[modelType];
+                    
+                    // Enable sample button
+                    const sampleBtn = document.getElementById('sample-btn');
+                    if (sampleBtn) sampleBtn.disabled = false;
+                    
+                    // Fetch model info and generate form
+                    const apiUrl = 'http://localhost:5000/api/model_info/' + modelType;
+                    console.log('📡 Fetching from:', apiUrl);
+                    fetch(apiUrl)
+                        .then(response => {
+                            console.log('📡 Response status:', response.status);
+                            if (!response.ok) throw new Error('Failed to load model info');
+                            return response.json();
+                        })
+                        .then(data => {
+                            modelInfo = data;
+                            console.log('✅ Model info received');
+                            generateFormFields(modelType);
+                        })
+                        .catch(error => {
+                            console.error('❌ Error:', error);
+                            alert('Error: ' + error.message);
+                        });
+                } catch (error) {
+                    console.error('❌ Exception in selectModel:', error);
+                    alert('Error: ' + error.message);
+                }
+            }, 50);
+        }
+
+        function generateFormFields(modelType) {
+            console.log('🔧 generateFormFields called for:', modelType);
+            const formFields = document.getElementById('form-fields');
+            formFields.innerHTML = '';
+            
+            if (!modelInfo) {
+                console.error('❌ modelInfo is null');
+                formFields.innerHTML = '<div class="col-12"><p class="text-warning">Model info not available</p></div>';
+                return;
+            }
+            
+            let fields = [];
+            
+            if (modelType === 'synthetic_ai' && modelInfo.features) {
+                fields = (modelInfo.features.delay_probability || []).concat(modelInfo.features.delay_days || []);
+                console.log('✅ Synthetic AI fields:', fields.length);
+            } else if (modelType === 'lending_club' && modelInfo.features) {
+                fields = modelInfo.features;
+                console.log('✅ LendingClub fields:', fields.length);
+            }
+            
+            if (fields.length === 0) {
+                console.error('❌ No fields found');
+                formFields.innerHTML = '<div class="col-12"><p class="text-warning">No fields found</p></div>';
+                return;
+            }
+            
+            console.log('📝 Creating', fields.length, 'form fields');
+            
+            fields.forEach((field, idx) => {
+                const fieldName = field.name || field;
+                const col = document.createElement('div');
+                col.className = 'col-md-6 col-lg-4 mb-3';
+                
+                const label = document.createElement('label');
+                label.className = 'form-label';
+                label.htmlFor = fieldName;
+                label.textContent = field.description || fieldName;
+                
+                col.appendChild(label);
+                
+                // Check if field has predefined options (like grade, term, etc)
+                const fieldNameLower = fieldName.toLowerCase();
+                const optionsMap = {
+                    'grade': ['A', 'B', 'C', 'D', 'E', 'F', 'G'],
+                    'term': [36, 60],
+                    'state_encoded': Array.from({length: 50}, (_, i) => i + 1),
+                    'acc_now_delinq': [0, 1, 2, 3, 4, 5],
+                    'delinq_2yrs': Array.from({length: 10}, (_, i) => i),
+                    'collections_12_mths_ex_med': [0, 1, 2, 3],
+                    'pub_rec': [0, 1, 2, 3],
+                    'pub_rec_bankruptcies': [0, 1, 2]
+                };
+                
+                // Create select dropdown if field has predefined options
+                if (optionsMap[fieldNameLower]) {
+                    const select = document.createElement('select');
+                    select.className = 'form-select';
+                    select.id = fieldName;
+                    select.name = fieldName;
+                    
+                    // Add default option
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = '';
+                    defaultOption.textContent = '-- Select ' + (field.description || fieldName) + ' --';
+                    defaultOption.selected = true;
+                    select.appendChild(defaultOption);
+                    
+                    // Add options
+                    optionsMap[fieldNameLower].forEach(opt => {
+                        const option = document.createElement('option');
+                        option.value = opt;
+                        option.textContent = opt;
+                        select.appendChild(option);
+                    });
+                    
+                    // Set default value if provided
+                    if (field.default !== undefined) {
+                        select.value = field.default;
+                    }
+                    
+                    col.appendChild(select);
+                } else {
+                    // Create number input for numeric fields
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.className = 'form-control';
+                    input.id = fieldName;
+                    input.name = fieldName;
+                    input.step = 'any';
+                    if (field.default !== undefined) input.value = field.default;
+                    
+                    col.appendChild(input);
+                }
+                
+                formFields.appendChild(col);
+                
+                if (idx === 0) console.log('✅ First field created:', fieldName);
+            });
+            console.log('✅ All form fields created successfully');
+        }
+
+        function fillSampleValues() {
+            if (!selectedModel || !sampleData[selectedModel]) {
+                alert('Please select a model first');
+                return;
+            }
+            
+            const samples = sampleData[selectedModel];
+            const sampleGrid = document.getElementById('sample-grid');
+            sampleGrid.innerHTML = '';
+            
+            // Create sample option buttons
+            samples.forEach((sample, idx) => {
+                const button = document.createElement('div');
+                button.className = 'sample-option';
+                button.textContent = sample.name;
+                button.onclick = () => selectSampleOption(idx);
+                button.dataset.index = idx;
+                sampleGrid.appendChild(button);
+            });
+            
+            // Show modal
+            const modal = document.getElementById('sample-modal-overlay');
+            modal.classList.add('show');
+        }
+
+        function selectSampleOption(idx) {
+            // Deselect all options
+            document.querySelectorAll('.sample-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            
+            // Select clicked option
+            const selected = document.querySelector(`.sample-option[data-index="${idx}"]`);
+            selected.classList.add('selected');
+            
+            // Enable confirm button
+            document.getElementById('confirm-sample-btn').disabled = false;
+            
+            // Store selected index
+            window.selectedSampleIndex = idx;
+        }
+
+        function applySampleData() {
+            if (window.selectedSampleIndex === undefined) return;
+            
+            const samples = sampleData[selectedModel];
+            const sample = samples[window.selectedSampleIndex];
+            
+            if (sample) {
+                Object.keys(sample).forEach(key => {
+                    if (key !== 'name') {
+                        const input = document.getElementById(key);
+                        if (input) input.value = sample[key];
+                    }
+                });
+            }
+            
+            closeSampleModal();
+        }
+
+        function closeSampleModal() {
+            const modal = document.getElementById('sample-modal-overlay');
+            modal.classList.remove('show');
+            window.selectedSampleIndex = undefined;
+            document.getElementById('confirm-sample-btn').disabled = true;
+        }
+
+        // Close modal when clicking outside
+        document.addEventListener('click', function(event) {
+            const modal = document.getElementById('sample-modal-overlay');
+            const modalContent = document.querySelector('.sample-modal');
+            if (event.target === modal) {
+                closeSampleModal();
+            }
+        });
+
+        document.getElementById('prediction-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!selectedModel) {
+                alert('Please select a model');
+                return;
+            }
+            
+            const formData = new FormData(this);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                if (value !== '') data[key] = isNaN(value) ? value : parseFloat(value);
+            }
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model_type: selectedModel, input_data: data })
+                });
+                
+                const result = await response.json();
+                if (response.ok) {
+                    displayResults(result);
+                } else {
+                    alert('Error: ' + (result.error || 'Prediction failed'));
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+
+        function displayResults(result) {
+            const resultsSection = document.getElementById('results-section');
+            const resultsContent = document.getElementById('results-content');
+            
+            let html = '<div class="result-grid">';
+            
+            if (result.predictions) {
+                // Format predictions nicely
+                const predictions = result.predictions;
+                Object.keys(predictions).forEach(key => {
+                    const value = predictions[key];
+                    let displayValue = value;
+                    let displayLabel = key.replace(/_/g, ' ').toUpperCase();
+                    
+                    // Format percentage values
+                    if (typeof value === 'number' && value <= 1 && value >= 0) {
+                        displayValue = (value * 100).toFixed(2) + '%';
+                    } else if (typeof value === 'number') {
+                        displayValue = value.toFixed(2);
+                    }
+                    
+                    // Create result card
+                    const card = document.createElement('div');
+                    card.className = 'result-card';
+                    card.innerHTML = `
+                        <div class="result-label">${displayLabel}</div>
+                        <div class="result-value">${displayValue}</div>
+                    `;
+                    html += card.outerHTML;
+                });
+            }
+            
+            if (result.confidence !== undefined) {
+                const confidence = (result.confidence * 100).toFixed(2);
+                const card = document.createElement('div');
+                card.className = 'result-card';
+                card.innerHTML = `
+                    <div class="result-label">Model Confidence</div>
+                    <div class="result-value">${confidence}%</div>
+                `;
+                html += card.outerHTML;
+            }
+            
+            if (result.risk_level) {
+                const riskClass = result.risk_level.toLowerCase() === 'low' ? 'low' : 'high';
+                const card = document.createElement('div');
+                card.className = 'result-card';
+                card.innerHTML = `
+                    <div class="result-label">Risk Level</div>
+                    <div class="result-value"><span class="risk-badge ${riskClass}">${result.risk_level}</span></div>
+                `;
+                html += card.outerHTML;
+            }
+            
+            html += '</div>';
+            
+            // Add full JSON for reference
+            html += '<div style="margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px;">';
+            html += '<h6 style="color: rgba(255,255,255,0.7); margin-bottom: 10px;">📋 Full Response:</h6>';
+            html += '<pre>' + JSON.stringify(result, null, 2) + '</pre>';
+            html += '</div>';
+            
+            resultsContent.innerHTML = html;
+            resultsSection.classList.add('show');
+            resultsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
