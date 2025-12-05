@@ -45,8 +45,6 @@ instance/
 .DS_Store
 Thumbs.db
 
-# Models (if too large)
-*.joblib
-*.pkl
-*.h5
+# Model cache (but NOT models/ directory)
+__pycache__/models/*.h5
 *.keras

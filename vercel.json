@@ -1,0 +1,22 @@
+{
+  "buildCommand": "echo 'Dependencies installed'",
+  "devCommand": "python app.py",
+  "framework": "flask",
+  "python": {
+    "version": "3.11"
+  },
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 60
+    }
+  },
+  "env": {
+    "FLASK_ENV": "production"
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/api/index.py"
+    }
+  ]
+}

@@ -46,6 +46,32 @@ heroku logs --tail
 heroku config:set FLASK_ENV=production
 ```
 
+## Deployment to Vercel
+
+```bash
+# Install Vercel CLI
+npm install -g vercel
+
+# Login to Vercel
+vercel login
+
+# Deploy to preview
+vercel
+
+# Deploy to production
+vercel --prod
+
+# View logs
+vercel logs
+```
+
+**Important Notes for Vercel:**
+- Uses serverless functions (`api/index.py`)
+- Requires model files in repository (`/frontend/models/`)
+- Max function timeout: 60 seconds
+- Max payload: 50MB
+- Set `FLASK_ENV=production` in environment variables
+
 ## Deployment with Docker
 
 ```bash
