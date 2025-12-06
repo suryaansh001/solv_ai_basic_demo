@@ -118,6 +118,145 @@ def load_models():
 # ============================================================================
 # PREDICTION FUNCTIONS
 # ============================================================================
+def process_synthetic_json(json_file):
+    """Load JSON, engineer features, compute party-level aggregates."""
+
+    import pandas as pd
+    import numpy as np
+    import json
+
+    raw = json.load(json_file)
+    df = pd.DataFrame(raw)
+
+    # Convert dates
+    date_cols = ["InvoiceDate","PaymentDate","PaymentReceiptDate","DueDate"]
+    for c in date_cols:
+        df[c] = pd.to_datetime(df[c], errors="coerce")
+
+    # Convert numerics
+    num_cols = ["Amount","CreditDays","DaysInPayment","OutstandingAmount"]
+    for c in num_cols:
+        df[c] = pd.to_numeric(df[c], errors="coerce")
+
+    # Filter rows with payments
+    settled_df = df.dropna(subset=["DaysInPayment"])
+
+    # Aggregate engineered features
+    party_stats = settled_df.groupby("PartyName").agg(
+        avg_delay_days=("DaysInPayment", "mean"),
+        max_delay_days=("DaysInPayment", "max"),
+        std_delay_days=("DaysInPayment", "std"),
+        delayed_count=("IsDelayed", "sum"),
+        total_txn=("IsDelayed", "count"),
+        total_value=("Amount", "sum"),
+        avg_credit_days=("CreditDays", "mean")
+    ).reset_index()
+
+    party_stats["std_delay_days"] = party_stats["std_delay_days"].fillna(0)
+    party_stats["on_time_rate"] = 1 - (party_stats["delayed_count"] / party_stats["total_txn"])
+
+    # Add regression features
+    party_stats["CreditDays"] = party_stats["avg_credit_days"]
+    party_stats["Amount"] = party_stats["total_value"] / party_stats["total_txn"]
+    party_stats["OutstandingAmount"] = 0
+
+    return party_stats
+
+def process_synthetic_json_from_df(df):
+    """Convert DataFrame to party-level aggregates (same as process_synthetic_json but for DataFrames)."""
+    
+    # Convert dates
+    date_cols = ["InvoiceDate","PaymentDate","PaymentReceiptDate","DueDate"]
+    for c in date_cols:
+        if c in df.columns:
+            df[c] = pd.to_datetime(df[c], errors="coerce")
+
+    # Convert numerics
+    num_cols = ["Amount","CreditDays","DaysInPayment","OutstandingAmount"]
+    for c in num_cols:
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors="coerce")
+
+    # Filter rows with payments
+    if "DaysInPayment" in df.columns:
+        settled_df = df.dropna(subset=["DaysInPayment"])
+    else:
+        settled_df = df
+
+    # Aggregate engineered features
+    party_stats = settled_df.groupby("PartyName").agg(
+        avg_delay_days=("DaysInPayment", "mean") if "DaysInPayment" in settled_df.columns else ("Amount", lambda x: 0),
+        max_delay_days=("DaysInPayment", "max") if "DaysInPayment" in settled_df.columns else ("Amount", lambda x: 0),
+        std_delay_days=("DaysInPayment", "std") if "DaysInPayment" in settled_df.columns else ("Amount", lambda x: 0),
+        delayed_count=("IsDelayed", "sum") if "IsDelayed" in settled_df.columns else ("Amount", lambda x: 0),
+        total_txn=("IsDelayed", "count") if "IsDelayed" in settled_df.columns else ("Amount", lambda x: 0),
+        total_value=("Amount", "sum") if "Amount" in settled_df.columns else ("CreditDays", lambda x: 0),
+        avg_credit_days=("CreditDays", "mean") if "CreditDays" in settled_df.columns else ("Amount", lambda x: 0)
+    ).reset_index()
+
+    party_stats["std_delay_days"] = party_stats["std_delay_days"].fillna(0)
+    party_stats["on_time_rate"] = 1 - (party_stats["delayed_count"] / party_stats["total_txn"])
+
+    # Add regression features
+    party_stats["CreditDays"] = party_stats["avg_credit_days"]
+    party_stats["Amount"] = party_stats["total_value"] / party_stats["total_txn"]
+    party_stats["OutstandingAmount"] = 0
+
+    return party_stats
+def generate_bulk_predictions(models, party_stats):
+    """Run classifier + regressor for all parties and return a table."""
+
+    clf_pkg = models['synthetic_ai']['delay_probability']
+    reg_pkg = models['synthetic_ai']['delay_days']
+
+    clf = clf_pkg["model"]
+    clf_feats = clf_pkg["features"]
+
+    reg = reg_pkg["model"]
+    reg_feats = reg_pkg["features"]
+
+    results = []
+
+    for _, row in party_stats.iterrows():
+        party_name = row["PartyName"]
+
+        # CLASSIFICATION INPUT
+        X_clf = pd.DataFrame([{feat: row.get(feat, 0) for feat in clf_feats}])
+        delay_prob = clf.predict_proba(X_clf)[0, 1]
+        delay_percent = round(delay_prob * 100, 2)
+
+        # REGRESSION INPUT
+        X_reg = pd.DataFrame([{feat: row.get(feat, 0) for feat in reg_feats}])
+        predicted_days = float(reg.predict(X_reg)[0])
+        predicted_days = max(predicted_days, 0)
+
+        # RISK SCORE
+        risk_score = (delay_prob * 60) + (min(predicted_days / 90, 1) * 40)
+        risk_score = round(risk_score, 1)
+
+        if risk_score >= 75:
+            tier = "CRITICAL"
+            reco = "⚠️ HIGH RISK - Require advance payment or collateral"
+        elif risk_score >= 50:
+            tier = "HIGH"
+            reco = "⚠️ ELEVATED RISK - Reduce credit terms, monitor closely"
+        elif risk_score >= 25:
+            tier = "MEDIUM"
+            reco = "✓ MODERATE RISK - Standard terms with monitoring"
+        else:
+            tier = "LOW"
+            reco = "✅ LOW RISK - Proceed with normal credit terms"
+
+        results.append({
+            "PartyName": party_name,
+            "Delay_Probability": delay_percent,
+            "Expected_Delay_Days": round(predicted_days, 1),
+            "Risk_Score": risk_score,
+            "Risk_Tier": tier,
+            "Recommendation": reco
+        })
+
+    return pd.DataFrame(results)
 
 def predict_synthetic_ai(models, data):
     """Predict payment delay using Synthetic AI models"""
@@ -314,87 +453,176 @@ def main():
             st.error("❌ Models not loaded. Please check model files.")
             return
         
-        # Input form
-        col1, col2, col3 = st.columns(3)
+        # Toggle between File Upload and Manual Input
+        input_mode = st.radio(
+            "Choose Input Mode",
+            options=["📤 Upload CSV/JSON File", "✍️ Manual Input"],
+            index=0,
+            horizontal=True
+        )
         
-        with col1:
-            avg_delay_days = st.number_input("Average Delay Days", value=0.0, min_value=0.0)
-            max_delay_days = st.number_input("Max Delay Days", value=15.0, min_value=0.0)
-            std_delay_days = st.number_input("Std Dev Delay Days", value=3.0, min_value=0.0)
-        
-        with col2:
-            on_time_rate = st.slider("On-Time Payment Rate", 0.0, 1.0, 0.8)
-            total_value = st.number_input("Total Transaction Value ($)", value=100000.0, min_value=0.0)
-            avg_credit_days = st.number_input("Avg Credit Days", value=30.0, min_value=0.0)
-        
-        with col3:
-            delayed_count = st.number_input("Delayed Payments Count", value=0.0, min_value=0.0)
-            total_txn = st.number_input("Total Transactions", value=10.0, min_value=1.0)
-            credit_days = st.number_input("Current Credit Days", value=30.0, min_value=0.0)
-            amount = st.number_input("Current Amount ($)", value=10000.0, min_value=0.0)
-            outstanding = st.number_input("Outstanding Amount ($)", value=0.0, min_value=0.0)
-        
-        # Sample data presets
-        if st.button("📊 Load Sample Data"):
-            sample_choice = st.selectbox("Select Sample Profile", ["Low Risk", "Medium Risk", "High Risk"])
+        if input_mode == "📤 Upload CSV/JSON File":
+            st.subheader("📂 Upload Transaction Data")
+            st.markdown("Upload CSV or JSON file with transaction data. Columns required: TransactionType, PartyName, Amount, CreditDays, DaysInPayment, IsDelayed")
             
-            if sample_choice == "Low Risk":
+            uploaded_file = st.file_uploader("Choose a CSV or JSON file", type=["csv", "json"])
+            
+            if uploaded_file is not None:
+                try:
+                    # Load file based on type
+                    if uploaded_file.name.endswith('.json'):
+                        import json
+                        try:
+                            raw_data = json.load(uploaded_file)
+                            df = pd.DataFrame(raw_data)
+                        except json.JSONDecodeError as je:
+                            st.error(f"❌ Invalid JSON format: {str(je)}")
+                            st.info("💡 Make sure your JSON is properly formatted. Use jsonlint.com to validate.")
+                            return
+                    else:  # CSV
+                        df = pd.read_csv(uploaded_file)
+                    
+                    st.success(f"✅ File loaded successfully! Found {len(df)} rows")
+                    st.write("**Preview of data:**")
+                    st.dataframe(df.head(), use_container_width=True)
+                    
+                    # Process the data
+                    if st.button("🚀 Generate Risk Analysis", type="primary"):
+                        with st.spinner("Processing transactions and calculating risk scores..."):
+                            try:
+                                party_stats = process_synthetic_json_from_df(df)
+                                results_df = generate_bulk_predictions(models, party_stats)
+                                
+                                st.subheader("📊 Risk Analysis Results")
+                                st.dataframe(results_df, use_container_width=True)
+                                
+                                # Download button
+                                csv = results_df.to_csv(index=False).encode('utf-8')
+                                st.download_button(
+                                    label="📥 Download Results as CSV",
+                                    data=csv,
+                                    file_name="risk_analysis.csv",
+                                    mime="text/csv"
+                                )
+                                
+                                # Summary statistics
+                                st.subheader("📈 Summary Statistics")
+                                col1, col2, col3, col4 = st.columns(4)
+                                with col1:
+                                    st.metric("Total Parties", len(results_df))
+                                with col2:
+                                    critical_high = len(results_df[results_df['Risk_Tier'].isin(['CRITICAL', 'HIGH'])])
+                                    st.metric("High Risk Count", critical_high)
+                                with col3:
+                                    avg_risk = results_df['Risk_Score'].mean()
+                                    st.metric("Avg Risk Score", f"{avg_risk:.1f}")
+                                with col4:
+                                    delayed_parties = len(results_df[results_df['Delay_Probability'] > 50])
+                                    st.metric("Likely to Delay", delayed_parties)
+                                
+                            except Exception as e:
+                                st.error(f"❌ Error processing data: {str(e)}")
+                                st.write("Make sure your file has the required columns: TransactionType, PartyName, Amount, CreditDays, DaysInPayment, IsDelayed")
+                
+                except Exception as e:
+                    st.error(f"❌ Error reading file: {str(e)}")
+                    st.info("💡 **Tips:**\n- For CSV: Make sure it's valid CSV format\n- For JSON: Check for special characters and proper quotes\n- Try uploading a different file to test")
+        
+        else:  # Manual Input mode
+            st.subheader("✍️ Manual Input - Single Party Prediction")
+            
+            # Input form
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                avg_delay_days = st.number_input("Average Delay Days", value=0.0, min_value=0.0)
+                max_delay_days = st.number_input("Max Delay Days", value=15.0, min_value=0.0)
+                std_delay_days = st.number_input("Std Dev Delay Days", value=3.0, min_value=0.0)
+            
+            with col2:
+                on_time_rate = st.slider("On-Time Payment Rate", 0.0, 1.0, 0.8)
+                total_value = st.number_input("Total Transaction Value ($)", value=100000.0, min_value=0.0)
+                avg_credit_days = st.number_input("Avg Credit Days", value=30.0, min_value=0.0)
+            
+            with col3:
+                delayed_count = st.number_input("Delayed Payments Count", value=0.0, min_value=0.0)
+                total_txn = st.number_input("Total Transactions", value=10.0, min_value=1.0)
+                credit_days = st.number_input("Current Credit Days", value=30.0, min_value=0.0)
+                amount = st.number_input("Current Amount ($)", value=10000.0, min_value=0.0)
+                outstanding = st.number_input("Outstanding Amount ($)", value=0.0, min_value=0.0)
+            
+            # Sample data presets
+            col_sample1, col_sample2, col_sample3 = st.columns(3)
+            with col_sample1:
+                if st.button("📊 Low Risk Sample", key="low_synthetic"):
+                    st.session_state.synthetic_sample = "low_risk"
+            with col_sample2:
+                if st.button("⚠️ Medium Risk Sample", key="med_synthetic"):
+                    st.session_state.synthetic_sample = "medium_risk"
+            with col_sample3:
+                if st.button("🚨 High Risk Sample", key="high_synthetic"):
+                    st.session_state.synthetic_sample = "high_risk"
+            
+            if 'synthetic_sample' not in st.session_state:
+                st.session_state.synthetic_sample = None
+            
+            if st.session_state.synthetic_sample == "low_risk":
                 avg_delay_days = 2.5
                 max_delay_days = 15
                 std_delay_days = 3.2
                 on_time_rate = 0.95
-            elif sample_choice == "Medium Risk":
+            elif st.session_state.synthetic_sample == "medium_risk":
                 avg_delay_days = 8.5
                 max_delay_days = 30
                 std_delay_days = 6.8
                 on_time_rate = 0.85
-            else:
+            elif st.session_state.synthetic_sample == "high_risk":
                 avg_delay_days = 18.5
                 max_delay_days = 60
                 std_delay_days = 12.5
                 on_time_rate = 0.65
-        
-        # Predict button
-        if st.button("🚀 Get Prediction", type="primary"):
-            input_data = {
-                'avg_delay_days': avg_delay_days,
-                'max_delay_days': max_delay_days,
-                'std_delay_days': std_delay_days,
-                'on_time_rate': on_time_rate,
-                'total_value': total_value,
-                'avg_credit_days': avg_credit_days,
-                'delayed_count': delayed_count,
-                'total_txn': total_txn,
-                'CreditDays': credit_days,
-                'Amount': amount,
-                'OutstandingAmount': outstanding
-            }
             
-            results = predict_synthetic_ai(models, input_data)
-            
-            # Display results
-            st.subheader("📈 Prediction Results")
-            
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric(
-                    "Delay Probability",
-                    f"{results['delay_probability']}%",
-                    delta=results['delay_risk_level']
-                )
-            with col2:
-                st.metric(
-                    "Predicted Delay Days",
-                    f"{results['predicted_delay_days']} days"
-                )
-            with col3:
-                st.metric(
-                    "Risk Score",
-                    f"{results['risk_score']}/100",
-                    delta=results['risk_tier']
-                )
-            
-            st.info(f"💡 **Recommendation:** {results['recommendation']}")
+            # Predict button
+            if st.button("🚀 Get Prediction", type="primary", key="predict_synthetic"):
+                input_data = {
+                    'avg_delay_days': avg_delay_days,
+                    'max_delay_days': max_delay_days,
+                    'std_delay_days': std_delay_days,
+                    'on_time_rate': on_time_rate,
+                    'total_value': total_value,
+                    'avg_credit_days': avg_credit_days,
+                    'delayed_count': delayed_count,
+                    'total_txn': total_txn,
+                    'CreditDays': credit_days,
+                    'Amount': amount,
+                    'OutstandingAmount': outstanding
+                }
+                
+                results = predict_synthetic_ai(models, input_data)
+                
+                # Display results
+                st.subheader("📈 Prediction Results")
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric(
+                        "Delay Probability",
+                        f"{results['delay_probability']}%",
+                        delta=results['delay_risk_level']
+                    )
+                with col2:
+                    st.metric(
+                        "Predicted Delay Days",
+                        f"{results['predicted_delay_days']} days"
+                    )
+                with col3:
+                    st.metric(
+                        "Risk Score",
+                        f"{results['risk_score']}/100",
+                        delta=results['risk_tier']
+                    )
+                
+                st.info(f"💡 **Recommendation:** {results['recommendation']}")
     
     else:  # LendingClub Dataset
         st.header("💳 LendingClub Dataset - Loan Risk Assessment")
